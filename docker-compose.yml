@@ -1,0 +1,71 @@
+version: '3'
+services:
+  influxdb:
+    container_name: influxdb
+    image: influxdb:1.8-alpine
+    env_file: configuration.env
+    networks:
+      - iot
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    restart: always
+
+  telegraf:
+    container_name: telegraf
+    image: telegraf
+    networks:
+      - iot
+    volumes:
+      - ./conf/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
+    restart: always
+    depends_on:
+      - mqtt
+      - influxdb
+    
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    env_file: configuration.env
+    networks:
+      - iot
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: always
+    depends_on:
+      - influxdb
+
+  mqtt:
+    container_name: mqtt
+    user: "0"
+    image: eclipse-mosquitto:1.6
+    networks:
+      - iot
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    restart: always
+
+  sbt-compiler:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    image: openjdk:11
+    networks:
+      - iot
+    restart: always
+    depends_on:
+      - mqtt
+      - influxdb
+      - grafana
+      - telegraf
+
+networks:
+  iot:
+
+volumes:
+  influxdb-data:
+  grafana-data:
